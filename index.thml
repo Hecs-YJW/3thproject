@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>KKUTU Classic - 끄투 클래식</title>
+    <style>
+        :root {
+            --bg-color: #2b2d42;
+            --board-bg: #edf2f4;
+            --main-color: #8d99ae;
+            --accent-color: #d90429;
+            --user-color: #4cc9f0;
+            --bot-color: #f72585;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            font-family: 'Malgun Gothic', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            user-select: none;
+        }
+
+        .game-container {
+            width: 700px;
+            height: 550px;
+            background-color: var(--board-bg);
+            border: 4px solid #111;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        /* 헤더 영역 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #ccc;
+            padding-bottom: 10px;
+        }
+
+        .mode-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .timer-bar-container {
+            width: 300px;
+            height: 20px;
+            background-color: #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #999;
+        }
+
+        .timer-bar {
+            width: 100%;
+            height: 100%;
+            background-color: #4caf50;
+            transition: width 0.1s linear, background-color 0.3s;
+        }
+
+        /* 플레이어 아바타 및 제시어 판 */
+        .play-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 20px 0;
+        }
+
+        .player-card {
+            width: 130px;
+            height: 160px;
+            background: #fff;
+            border: 3px solid #333;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-around;
+            padding: 10px;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .player-card.active {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 12px rgba(217, 4, 41, 0.6);
+        }
+
+        .avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 30px;
+            color: #fff;
+        }
+
+        .user-avatar { background-color: var(--user-color); }
+        .bot-avatar { background-color: var(--bot-color); }
+
+        .player-name { font-weight: bold; font-size: 14px; }
+        .player-score { font-size: 16px; color: #d90429; font-weight: bold; }
+
+        /* 중앙 제시어 디스플레이 */
+        .word-display-box {
+            flex-grow: 1;
+            margin: 0 20px;
+            text-align: center;
+        }
+
+        .current-word {
+            font-size: 42px;
+            font-weight: 900;
+            color: #2b2d42;
+            letter-spacing: 2px;
+            min-height: 60px;
+        }
+
+        .target-char {
+            color: var(--accent-color);
+            text-decoration: underline;
+        }
+
+        .speech-bubble {
+            font-size: 14px;
+            color: #555;
+            min-height: 20px;
+            margin-top: 5px;
+        }
+
+        /* 채팅 & 로그 기록 */
+        .log-box {
+            height: 150px;
+            background: #fff;
+            border: 2px solid #ccc;
+            border-radius: 6px;
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .log-item { margin: 2px 0; }
+        .log-item.user { color: #0077b6; }
+        .log-item.bot { color: #d62828; }
+        .log-item.sys { color: #70e000; font-weight: bold; }
+
+        /* 하단 입력 폼 */
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        .word-input {
+            flex-grow: 1;
+            height: 45px;
+            font-size: 18px;
+            padding: 0 15px;
+            border: 2px solid #333;
+            border-radius: 6px;
+            outline: none;
+        }
+
+        .word-input:focus {
+            border-color: var(--user-color);
+        }
+
+        .submit-btn {
+            width: 90px;
+            height: 49px;
+            background-color: #2b2d42;
+            color: #fff;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .submit-btn:hover { background-color: #4a4e69; }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <!-- 헤더 영역 -->
+    <div class="header">
+        <div class="mode-title">⚡ 끄투 클래식 (끝말잇기)</div>
+        <div class="timer-bar-container">
+            <div id="timer-bar" class="timer-bar"></div>
+        </div>
+    </div>
+
+    <!-- 플레이어 및 제시어 영역 -->
+    <div class="play-area">
+        <div id="p-user" class="player-card active">
+            <div class="avatar user-avatar">😃</div>
+            <div class="player-name">유저</div>
+            <div id="user-score" class="player-score">0 점</div>
+        </div>
+
+        <div class="word-display-box">
+            <div id="speech-bubble" class="speech-bubble">게임이 곧 시작됩니다!</div>
+            <div id="current-word" class="current-word">제시어</div>
+        </div>
+
+        <div id="p-bot" class="player-card">
+            <div class="avatar bot-avatar">🤖</div>
+            <div class="player-name">끄투봇</div>
+            <div id="bot-score" class="player-score">0 점</div>
+        </div>
+    </div>
+
+    <!-- 로그 출력창 -->
+    <div id="log-box" class="log-box"></div>
+
+    <!-- 입력창 -->
+    <div class="input-area">
+        <input type="text" id="word-input" class="word-input" placeholder="단어를 입력하세요..." autocomplete="off" disabled>
+        <button id="submit-btn" class="submit-btn" disabled>입력</button>
+    </div>
+</div>
+
+<script>
+    // 1. 단어 DB (끄투 스타일 내장 사전)
+    const WORD_DATABASE = [
+        "가방", "가격", "가수", "가을", "구름", "국수", "극장", "기차", "기구", "기상",
+        "나비", "나무", "나팔", "뉴스", "느티나무", "다리", "다람쥐", "도서관", "도토리",
+        "라디오", "라면", "리본", "마술", "마을", "모자", "바다", "바나나", "박사", "비행기",
+        "사과", "사자", "수박", "시계", "안경", "양말", "호랑이", "학교", "학생", "비행선",
+        "선풍기", "기러기", "기름", "음악", "악기", "기역", "역사", "사진", "진달래", "래미안"
+    ];
+
+    // 게임 상태 변수
+    const wordSet = new Set(WORD_DATABASE);
+    const usedWords = new Set();
+    
+    let currentWord = "";
+    let turn = "user"; // 'user' | 'bot'
+    let timer = null;
+    let timeLeft = 10;
+    const MAX_TIME = 10;
+    
+    let userScore = 0;
+    let botScore = 0;
+
+    // DOM 요소
+    const currentWordEl = document.getElementById("current-word");
+    const speechBubbleEl = document.getElementById("speech-bubble");
+    const logBoxEl = document.getElementById("log-box");
+    const wordInput = document.getElementById("word-input");
+    const submitBtn = document.getElementById("submit-btn");
+    const timerBar = document.getElementById("timer-bar");
+    const pUser = document.getElementById("p-user");
+    const pBot = document.getElementById("p-bot");
+
+    // 두음법칙 변환 함수 (끄투 핵심 규칙)
+    function getValidNextChars(char) {
+        const nextChars = [char];
+        const code = char.charCodeAt(0) - 0xAC00;
+        
+        if (code >= 0 && code <= 11171) {
+            const cho = Math.floor(code / 588);
+            const jung = Math.floor((code % 588) / 28);
+            const jong = code % 28;
+
+            // 'ㄴ' -> 'ㅇ' (녀, 뇨, 뉴, 니 -> 여, 요, 유, 이)
+            if (cho === 3 && [2, 12, 17, 20].includes(jung)) {
+                const newCode = 0xAC00 + (11 * 588) + (jung * 28) + jong;
+                nextChars.push(String.fromCharCode(newCode));
+            }
+            // 'ㄹ' -> 'ㄴ' 또는 'ㅇ'
+            else if (cho === 5) {
+                if ([0, 4, 8, 13, 18].includes(jung)) {
+                    const newCode = 0xAC00 + (3 * 588) + (jung * 28) + jong;
+                    nextChars.push(String.fromCharCode(newCode));
+                } else if ([2, 12, 17, 20].includes(jung)) {
+                    const newCode = 0xAC00 + (11 * 588) + (jung * 28) + jong;
+                    nextChars.push(String.fromCharCode(newCode));
+                }
+            }
+        }
+        return nextChars;
+    }
+
+    // 게임 시작
+    function startGame() {
+        addLog("sys", "🎮 끄투 끝말잇기 게임이 시작되었습니다!");
+        
+        // 첫 시작 단어 무작위 선정
+        const randomWord = WORD_DATABASE[Math.floor(Math.random() * WORD_DATABASE.length)];
+        currentWord = randomWord;
+        usedWords.add(currentWord);
+        
+        updateWordDisplay();
+        setTurn("user");
+    }
+
+    // 단어 화면 업데이트
+    function updateWordDisplay() {
+        const lastChar = currentWord.slice(-1);
+        const validChars = getValidNextChars(lastChar);
+
+        let charGuide = `'${lastChar}'`;
+        if (validChars.length > 1) {
+            charGuide += ` (또는 '${validChars[1]}')`;
+        }
+
+        currentWordEl.innerHTML = `${currentWord.slice(0, -1)}<span class="target-char">${lastChar}</span>`;
+        speechBubbleEl.innerText = `${charGuide}(으)로 시작하는 단어를 입력하세요!`;
+    }
+
+    // 턴 교체 처리
+    function setTurn(nextTurn) {
+        turn = nextTurn;
+        resetTimer();
+
+        if (turn === "user") {
+            pUser.classList.add("active");
+            pBot.classList.remove("active");
+            wordInput.disabled = false;
+            submitBtn.disabled = false;
+            wordInput.focus();
+        } else {
+            pBot.classList.add("active");
+            pUser.classList.remove("active");
+            wordInput.disabled = true;
+            submitBtn.disabled = true;
+            
+            // AI 봇 입력 대기 (1.5 ~ 3초 후 반응)
+            setTimeout(botPlay, 1500 + Math.random() * 1500);
+        }
+    }
+
+    // 타이머 처리
+    function resetTimer() {
+        clearInterval(timer);
+        timeLeft = MAX_TIME;
+        updateTimerBar();
+
+        timer = setInterval(() => {
+            timeLeft -= 0.1;
+            updateTimerBar();
+
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                handleTimeout();
+            }
+        }, 100);
+    }
+
+    function updateTimerBar() {
+        const percentage = (timeLeft / MAX_TIME) * 100;
+        timerBar.style.width = `${percentage}%`;
+
+        if (percentage < 30) {
+            timerBar.style.backgroundColor = "#d90429";
+        } else if (percentage < 60) {
+            timerBar.style.backgroundColor = "#ffb703";
+        } else {
+            timerBar.style.backgroundColor = "#4caf50";
+        }
+    }
+
+    // 시간 초과 시
+    function handleTimeout() {
+        if (turn === "user") {
+            addLog("sys", "⏰ 시간 초과! 끄투봇의 승리입니다.");
+            botScore += 100;
+            document.getElementById("bot-score").innerText = `${botScore} 점`;
+        } else {
+            addLog("sys", "⏰ 끄투봇이 단어를 생각하지 못했습니다. 유저의 승리!");
+            userScore += 100;
+            document.getElementById("user-score").innerText = `${userScore} 점`;
+        }
+        
+        wordInput.disabled = true;
+        submitBtn.disabled = true;
+        speechBubbleEl.innerText = "게임 종료!";
+    }
+
+    // 단어 제출 로직
+    function handleWordSubmit() {
+        const input = wordInput.value.trim();
+        wordInput.value = "";
+
+        if (input.length < 2) {
+            speechBubbleEl.innerText = "⚠️ 두 글자 이상 입력하세요!";
+            return;
+        }
+
+        const lastChar = currentWord.slice(-1);
+        const validChars = getValidNextChars(lastChar);
+        const firstChar = input[0];
+
+        if (!validChars.includes(firstChar)) {
+            speechBubbleEl.innerText = `⚠️ '${validChars.join(" 또는 ")}' (으)로 시작해야 합니다!`;
+            return;
+        }
+
+        if (!wordSet.has(input)) {
+            speechBubbleEl.innerText = "⚠️ 사전에 없는 단어입니다!";
+            return;
+        }
+
+        if (usedWords.has(input)) {
+            speechBubbleEl.innerText = "⚠️ 이미 사용된 단어입니다!";
+            return;
+        }
+
+        // 성공 입력
+        usedWords.add(input);
+        currentWord = input;
+        
+        // 점수 계산 (글자 수 * 10점)
+        const earnedScore = input.length * 10;
+        userScore += earnedScore;
+        document.getElementById("user-score").innerText = `${userScore} 점`;
+
+        addLog("user", `유저: ${input} (+${earnedScore}점)`);
+        updateWordDisplay();
+        setTurn("bot");
+    }
+
+    // AI 봇 알고리즘
+    function botPlay() {
+        const lastChar = currentWord.slice(-1);
+        const validChars = getValidNextChars(lastChar);
+
+        // 사용 가능한 단어 탐색
+        const candidates = WORD_DATABASE.filter(word => {
+            return validChars.includes(word[0]) && !usedWords.has(word);
+        });
+
+        if (candidates.length > 0) {
+            // 랜덤 단어 하나 선택
+            const botChoice = candidates[Math.floor(Math.random() * candidates.length)];
+            
+            usedWords.add(botChoice);
+            currentWord = botChoice;
+            
+            const earnedScore = botChoice.length * 10;
+            botScore += earnedScore;
+            document.getElementById("bot-score").innerText = `${botScore} 점`;
+
+            addLog("bot", `끄투봇: ${botChoice} (+${earnedScore}점)`);
+            updateWordDisplay();
+            setTurn("user");
+        } else {
+            // 이어갈 단어가 없을 때 패배
+            clearInterval(timer);
+            addLog("sys", "🎉 끄투봇이 더 이상 이어갈 단어가 없습니다! 유저 승리!");
+            speechBubbleEl.innerText = "승리하셨습니다!";
+        }
+    }
+
+    // 로그 기록
+    function addLog(type, text) {
+        const item = document.createElement("div");
+        item.className = `log-item ${type}`;
+        item.innerText = text;
+        logBoxEl.appendChild(item);
+        logBoxEl.scrollTop = logBoxEl.scrollHeight;
+    }
+
+    // 이벤트 리스너
+    submitBtn.addEventListener("click", handleWordSubmit);
+    wordInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") handleWordSubmit();
+    });
+
+    // 실행
+    startGame();
+</script>
+</body>
+</html>
